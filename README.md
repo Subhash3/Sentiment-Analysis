@@ -5,6 +5,9 @@
 
 ### To Do
 - [ ] Find datasets.
-- [ ] Preprocess dataset using pandas.
+- [ ] Preprocess dataset using pandas and re.
 - [ ] Tokenization.
-- [ ] Remove stop words.
+- [ ] Remove stop words, punctuations and special characters.
+- [ ] Stemming (replace all verb forms with corresponding root word).
+
+##### Feel free to contribute or open any issues!
