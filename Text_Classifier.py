@@ -1,5 +1,6 @@
 import pandas as pd
 import re
+import json
 
 
 class TextClassifier:
@@ -18,13 +19,71 @@ class TextClassifier:
         self.noOfSamples = 0
         self.noOfFeatures = 0
 
-    def loadDataset(self, csvFile):
+    def removeSpecialChars(self, sentence: str):
         """
-            Loads the data from a csv file into a pandas DataFrame
+            Removes special characters from a given string
+
+            Attributes
+            ----------
+            sentence: str
+
+            Returns
+            -------
+            str
+                A new string without special characters.
+        """
+
+        return re.sub('[^a-zA-Z0-9 \n]', '', sentence)
+
+    def tokenize(self, sentence: str):
+        """
+            Tokenizes the given sentence.
+
+            Attributes
+            ----------
+            sentence: str
+
+            Returns
+            -------
+            list
+                A list of words(tokens).
+        """
+        return [token.strip() for token in sentence.lower().split()]
+
+    def preProcess(self, data):
+        """
+            Applies several pre-processing steps such as tokenization, stemming ...etc to the data.
+
+            Attributes
+            ----------
+            data: pd.DataFrame
+                A pandas dataframe with sentence and category.
+
+            Returns
+            -------
+            data: pd.DataFrame
+                Preprocessed data
+        """
+
+        processed = list()
+        for sample in data:
+            sentence = sample["sentence"]
+            sentence = self.removeSpecialChars(sentence)
+            tokens = self.tokenize(sentence)
+            processed.append({
+                "tokens": tokens,
+                "category": sample["category"]
+            })
+
+        return processed
+
+    def loadDataset(self, jsonFile):
+        """
+            Loads the data from a json file into a pandas DataFrame
 
             Parameters
             ----------
-            csvFile: str
+            jsonFile: str
                 Csv file containing the dataset
 
             Returns
@@ -36,10 +95,8 @@ class TextClassifier:
         """
 
         try:
-            data = pd.DataFrame(pd.read_csv(csvFile))
-            self.dataset = data
-            self.noOfSamples = data.shape[0]
-            self.noOfFeatures = data.shape[1] - 1
+            data = json.load(open(jsonFile))
+            self.dataset = self.preProcess(data)
         except Exception as e:
             raise Exception
 
@@ -79,6 +136,10 @@ class TextClassifier:
         return summary
 
     def train(self):
+        """
+            Computes the mean and std of each feature in each class and stores the results in self.summaryByClass
+        """
+
         self.summaryByClass = self._describeByClass(self.dataset)
 
         for category in self.summaryByClass:
