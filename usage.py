@@ -3,5 +3,9 @@
 from Text_Classifier import TextClassifier
 
 tc = TextClassifier()
-tc.loadDataset('./datasets/sample.csv')
+tc.loadDataset('./train_short.json')
 tc.train()
+sentence = "good"
+
+prediction = tc.predict(sentence)
+print(prediction)
