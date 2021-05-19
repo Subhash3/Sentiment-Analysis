@@ -5,6 +5,7 @@ name = "pypi"
 
 [scripts]
 docs = "./generate_docs.py"
+usage = "./usage.py"
 
 [packages]
 pandas = "*"
