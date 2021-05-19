@@ -42,7 +42,7 @@ class TextClassifier:
 
     def __init__(self):
         self.dataset = pd.DataFrame()
-        pass
+        self.summaryByClass = dict()
 
     def loadDataset(self, csvFile):
         &#34;&#34;&#34;
@@ -62,11 +62,37 @@ class TextClassifier:
         &#34;&#34;&#34;
 
         try:
-            data = pd.read_csv(csvFile)
+            data = pd.DataFrame(pd.read_csv(
+                csvFile, sep=&#39;\s*,\s*&#39;, engine=&#34;python&#34;))
             self.dataset = data
-            print(self.dataset)
         except Exception as e:
-            raise Exception</code></pre>
+            raise Exception
+
+    def describeByClass(self):
+        &#34;&#34;&#34;
+            Separates data by classname and computes the mean and std of each feature in each class.
+        &#34;&#34;&#34;
+        categories = set(self.dataset[&#34;class&#34;])
+        features = self.dataset.columns[:-1]
+
+        summary = dict()
+
+        for category in categories:
+            samples = self.dataset[self.dataset[&#34;class&#34;] == category]
+            # print(samples.describe())
+
+            summaryOfThisCategory = list()
+            for f in features:
+                mean = samples[f].describe().get(&#34;mean&#34;)
+                std = samples[f].describe().get(&#34;std&#34;)
+
+                summaryOfThisCategory.append({
+                    &#34;mean&#34;: mean,
+                    &#34;std&#34;: std
+                })
+            summary[category] = summaryOfThisCategory
+        self.summaryByClass = summary
+        print(summary)</code></pre>
 </details>
 </section>
 <section>
@@ -104,7 +130,7 @@ class TextClassifier:
 
     def __init__(self):
         self.dataset = pd.DataFrame()
-        pass
+        self.summaryByClass = dict()
 
     def loadDataset(self, csvFile):
         &#34;&#34;&#34;
@@ -124,14 +150,76 @@ class TextClassifier:
         &#34;&#34;&#34;
 
         try:
-            data = pd.read_csv(csvFile)
+            data = pd.DataFrame(pd.read_csv(
+                csvFile, sep=&#39;\s*,\s*&#39;, engine=&#34;python&#34;))
             self.dataset = data
-            print(self.dataset)
         except Exception as e:
-            raise Exception</code></pre>
+            raise Exception
+
+    def describeByClass(self):
+        &#34;&#34;&#34;
+            Separates data by classname and computes the mean and std of each feature in each class.
+        &#34;&#34;&#34;
+        categories = set(self.dataset[&#34;class&#34;])
+        features = self.dataset.columns[:-1]
+
+        summary = dict()
+
+        for category in categories:
+            samples = self.dataset[self.dataset[&#34;class&#34;] == category]
+            # print(samples.describe())
+
+            summaryOfThisCategory = list()
+            for f in features:
+                mean = samples[f].describe().get(&#34;mean&#34;)
+                std = samples[f].describe().get(&#34;std&#34;)
+
+                summaryOfThisCategory.append({
+                    &#34;mean&#34;: mean,
+                    &#34;std&#34;: std
+                })
+            summary[category] = summaryOfThisCategory
+        self.summaryByClass = summary
+        print(summary)</code></pre>
 </details>
 <h3>Methods</h3>
 <dl>
+<dt id="Text_Classifier.TextClassifier.describeByClass"><code class="name flex">
+<span>def <span class="ident">describeByClass</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Separates data by classname and computes the mean and std of each feature in each class.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def describeByClass(self):
+    &#34;&#34;&#34;
+        Separates data by classname and computes the mean and std of each feature in each class.
+    &#34;&#34;&#34;
+    categories = set(self.dataset[&#34;class&#34;])
+    features = self.dataset.columns[:-1]
+
+    summary = dict()
+
+    for category in categories:
+        samples = self.dataset[self.dataset[&#34;class&#34;] == category]
+        # print(samples.describe())
+
+        summaryOfThisCategory = list()
+        for f in features:
+            mean = samples[f].describe().get(&#34;mean&#34;)
+            std = samples[f].describe().get(&#34;std&#34;)
+
+            summaryOfThisCategory.append({
+                &#34;mean&#34;: mean,
+                &#34;std&#34;: std
+            })
+        summary[category] = summaryOfThisCategory
+    self.summaryByClass = summary
+    print(summary)</code></pre>
+</details>
+</dd>
 <dt id="Text_Classifier.TextClassifier.loadDataset"><code class="name flex">
 <span>def <span class="ident">loadDataset</span></span>(<span>self, csvFile)</span>
 </code></dt>
@@ -171,9 +259,9 @@ class TextClassifier:
     &#34;&#34;&#34;
 
     try:
-        data = pd.read_csv(csvFile)
+        data = pd.DataFrame(pd.read_csv(
+            csvFile, sep=&#39;\s*,\s*&#39;, engine=&#34;python&#34;))
         self.dataset = data
-        print(self.dataset)
     except Exception as e:
         raise Exception</code></pre>
 </details>
@@ -194,6 +282,7 @@ class TextClassifier:
 <li>
 <h4><code><a title="Text_Classifier.TextClassifier" href="#Text_Classifier.TextClassifier">TextClassifier</a></code></h4>
 <ul class="">
+<li><code><a title="Text_Classifier.TextClassifier.describeByClass" href="#Text_Classifier.TextClassifier.describeByClass">describeByClass</a></code></li>
 <li><code><a title="Text_Classifier.TextClassifier.loadDataset" href="#Text_Classifier.TextClassifier.loadDataset">loadDataset</a></code></li>
 </ul>
 </li>
