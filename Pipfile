@@ -3,10 +3,14 @@ url = "https://pypi.org/simple"
 verify_ssl = true
 name = "pypi"
 
+[scripts]
+docs = "python3 -m  pdoc --html *.py --force -o docs"
+
 [packages]
 pandas = "*"
 
 [dev-packages]
+pdoc3 = "*"
 
 [requires]
 python_version = "3.6"
