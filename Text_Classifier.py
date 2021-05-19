@@ -1,6 +1,7 @@
 import pandas as pd
 import re
 import json
+from helpers import stopWords
 
 
 class TextClassifier:
@@ -48,6 +49,9 @@ class TextClassifier:
                 A list of words(tokens).
         """
         return [token.strip() for token in sentence.lower().split()]
+
+    def removeStopWords(self, words: list):
+        return [word for word in words if word not in stopWords]
 
     def processString(self, sentence: str):
         sentence = self.removeSpecialChars(sentence)
@@ -156,9 +160,29 @@ class TextClassifier:
         self.summaryByClass = self._describeByClass(self.dataset)
 
     def computeProbabilities(self, tokens: list):
-        for token in tokens:
-            pass
+        categories = set(self.dataset["category"])
+
+        probabilities = dict()
+        for category in categories:
+            samples = self.dataset[self.dataset["category"] == category]
+            samplesCount = samples.shape[0]
+            priorProbability = 1/samplesCount
+
+            likelihood = 1
+            for token in tokens:
+                if token in self.summaryByClass[category]:
+                    p = self.summaryByClass[category][token]
+                else:
+                    p = 0.001
+                print(category, token, p)
+                likelihood *= p
+            probabilities[category] = p * priorProbability
+            print()
+        return probabilities
 
     def predict(self, sentence: str):
-        sentence = self.processString(sentence)
-        # print(sentence)
+        tokens = self.processString(sentence)
+        print(self.summaryByClass)
+        probabilities = self.computeProbabilities(tokens)
+        print(probabilities)
+        return probabilities
