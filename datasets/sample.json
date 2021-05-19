@@ -1,0 +1,38 @@
+[
+    {
+        "sentence": "This looks great!",
+        "category": "positive"
+    },
+    {
+        "sentence": "Doesn't seem so good!",
+        "category": "negative"
+    },
+    {
+        "sentence": "I appreciate it.",
+        "category": "positive"
+    },
+    {
+        "sentence": "You are beautiful.!",
+        "category": "positive"
+    },
+    {
+        "sentence": "You are a bad boy!",
+        "category": "negative"
+    },
+    {
+        "sentence": "This could have been much better.",
+        "category": "negative"
+    },
+    {
+        "sentence": "Why can't you do anything?",
+        "category": "negative"
+    },
+    {
+        "sentence": "It is my pleasure to meet you.",
+        "category": "positive"
+    },
+    {
+        "sentence": "I love you jacket!",
+        "category": "positive"
+    }
+]
