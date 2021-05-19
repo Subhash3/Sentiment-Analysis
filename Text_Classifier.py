@@ -17,6 +17,7 @@ class TextClassifier:
     def __init__(self):
         self.dataset = pd.DataFrame()
         self.summaryByClass = dict()
+        self.noOfSamples = 0
         self.DEFAULT_PROBABILITY = 1
 
     def removeSpecialChars(self, sentence: str):
@@ -51,11 +52,38 @@ class TextClassifier:
         return [token.strip() for token in sentence.lower().split()]
 
     def removeStopWords(self, words: list):
+        """
+            Removes the stop words from the given list of words
+
+            Attributes
+            ----------
+            words:list
+                List of tokens
+
+            Returns
+            -------
+            list
+                List of given words but with no stop words.
+        """
         return [word for word in words if word not in stopWords]
 
     def processString(self, sentence: str):
+        """
+            Applies the pre-processing steps to a given strinf
+
+            Attributes
+            ----------
+            sentence: str
+
+            Returns
+            -------
+            tokens: list
+                A list of processed tokens
+        """
+
         sentence = self.removeSpecialChars(sentence)
         tokens = self.tokenize(sentence)
+        tokens = self.removeStopWords(tokens)
 
         return tokens
 
@@ -110,6 +138,7 @@ class TextClassifier:
             data = json.load(open(jsonFile))
             data = self.preProcess(data)
             self.dataset = pd.DataFrame(data)
+            self.noOfSamples = self.dataset.shape[0]
         except Exception as e:
             raise e
 
@@ -160,13 +189,27 @@ class TextClassifier:
         self.summaryByClass = self._describeByClass(self.dataset)
 
     def computeProbabilities(self, tokens: list):
+        """
+            Computes the probability that the given tokens belong to each class.
+
+            Attributes
+            ----------
+            tokens: list
+                List of processed tokens
+
+            Returns
+            -------
+            probabilities: Dict[str, float]
+                probability of each class/category.
+        """
+
         categories = set(self.dataset["category"])
 
         probabilities = dict()
         for category in categories:
             samples = self.dataset[self.dataset["category"] == category]
             samplesCount = samples.shape[0]
-            priorProbability = 1/samplesCount
+            priorProbability = samplesCount/self.noOfSamples
 
             likelihood = 1
             for token in tokens:
@@ -174,13 +217,26 @@ class TextClassifier:
                     p = self.summaryByClass[category][token]
                 else:
                     p = 0.001
-                print(category, token, p)
+                print(category, token, p, priorProbability)
                 likelihood *= p
             probabilities[category] = p * priorProbability
-            print()
+            # print()
         return probabilities
 
     def predict(self, sentence: str):
+        """
+            Predicts the category of the given sentence.
+
+            Attributes
+            ----------
+            sentence: str
+
+            Returns
+            -------
+            Tuple[str, Dict[str, float]]
+                Tuple containing the predicted category and probabilities of all categories.
+        """
+
         tokens = self.processString(sentence)
         print(self.summaryByClass)
         probabilities = self.computeProbabilities(tokens)

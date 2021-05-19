@@ -4,7 +4,7 @@
         "category": "positive"
     },
     {
-        "sentence": "Doesn't seem so good!",
+        "sentence": "This is too bad!",
         "category": "negative"
     },
     {
@@ -17,10 +17,6 @@
     },
     {
         "sentence": "You are a bad boy!",
-        "category": "negative"
-    },
-    {
-        "sentence": "This could have been much better.",
         "category": "negative"
     },
     {
