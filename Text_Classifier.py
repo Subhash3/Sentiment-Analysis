@@ -1,7 +1,7 @@
 import pandas as pd
 import re
 import json
-from helpers import stopWords
+from helpers import stopWords, customArgmax
 
 
 class TextClassifier:
@@ -217,7 +217,7 @@ class TextClassifier:
                     p = self.summaryByClass[category][token]
                 else:
                     p = 0.001
-                print(category, token, p, priorProbability)
+                # print(category, token, p, priorProbability)
                 likelihood *= p
             probabilities[category] = p * priorProbability
             # print()
@@ -238,7 +238,7 @@ class TextClassifier:
         """
 
         tokens = self.processString(sentence)
-        print(self.summaryByClass)
+        # print(self.summaryByClass)
         probabilities = self.computeProbabilities(tokens)
-        print(probabilities)
-        return probabilities
+        # print(probabilities)
+        return customArgmax(probabilities), probabilities
