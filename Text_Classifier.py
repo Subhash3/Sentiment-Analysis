@@ -16,8 +16,7 @@ class TextClassifier:
     def __init__(self):
         self.dataset = pd.DataFrame()
         self.summaryByClass = dict()
-        self.noOfSamples = 0
-        self.noOfFeatures = 0
+        self.DEFAULT_PROBABILITY = 1
 
     def removeSpecialChars(self, sentence: str):
         """
@@ -33,7 +32,7 @@ class TextClassifier:
                 A new string without special characters.
         """
 
-        return re.sub('[^a-zA-Z0-9 \n]', '', sentence)
+        return re.sub('[^a-zA-Z0-9 \n\'\"]', '', sentence)
 
     def tokenize(self, sentence: str):
         """
@@ -49,6 +48,12 @@ class TextClassifier:
                 A list of words(tokens).
         """
         return [token.strip() for token in sentence.lower().split()]
+
+    def processString(self, sentence: str):
+        sentence = self.removeSpecialChars(sentence)
+        tokens = self.tokenize(sentence)
+
+        return tokens
 
     def preProcess(self, data):
         """
@@ -68,8 +73,7 @@ class TextClassifier:
         processed = list()
         for sample in data:
             sentence = sample["sentence"]
-            sentence = self.removeSpecialChars(sentence)
-            tokens = self.tokenize(sentence)
+            tokens = self.processString(sentence)
             processed.append({
                 "tokens": tokens,
                 "category": sample["category"]
@@ -84,7 +88,11 @@ class TextClassifier:
             Parameters
             ----------
             jsonFile: str
-                Csv file containing the dataset
+                Json file containing the dataset, an array of data-samples with the following structure:
+                {
+                    "sentence": "some sentence",
+                    "category": "positive/negative"
+                }
 
             Returns
             -------
@@ -96,11 +104,12 @@ class TextClassifier:
 
         try:
             data = json.load(open(jsonFile))
-            self.dataset = self.preProcess(data)
+            data = self.preProcess(data)
+            self.dataset = pd.DataFrame(data)
         except Exception as e:
-            raise Exception
+            raise e
 
-    def _describeByClass(self, dataset):
+    def _describeByClass(self, dataset: pd.DataFrame):
         """
             Separates data by classname and computes the mean and std of each feature in each class.
 
@@ -114,25 +123,29 @@ class TextClassifier:
             summary: Dict[str: List[mean, std]]
                 Map from class to a list of mean and std values of each feature.
         """
-        categories = set(dataset["class"])
-        features = dataset.columns[:-1]
+        categories = set(dataset["category"])
 
         summary = dict()
 
         for category in categories:
-            samples = dataset[dataset["class"] == category]
-            # print(samples.describe())
+            samples = dataset[dataset["category"] == category]
+            # print(samples)
+            samplesCount = samples.shape[0]
 
-            summaryOfThisCategory = list()
-            for f in features:
-                mean = samples[f].describe().get("mean")
-                std = samples[f].describe().get("std")
+            tokenProbabilities = dict()
+            for tokenList in samples["tokens"]:
+                # print(tokenList)
+                for token in tokenList:
+                    if token not in tokenProbabilities:
+                        tokenProbabilities[token] = self.DEFAULT_PROBABILITY
+                    else:
+                        tokenProbabilities[token] += 1
 
-                summaryOfThisCategory.append({
-                    "mean": mean,
-                    "std": std
-                })
-            summary[category] = summaryOfThisCategory
+            for token in tokenProbabilities:
+                tokenProbabilities[token] /= samplesCount
+
+            summary[category] = tokenProbabilities
+        # print(summary)
         return summary
 
     def train(self):
@@ -142,7 +155,6 @@ class TextClassifier:
 
         self.summaryByClass = self._describeByClass(self.dataset)
 
-        for category in self.summaryByClass:
-            print(category)
-            for i in range(self.noOfFeatures):
-                print(f"\tfeature-{i+1}: {self.summaryByClass[category][i]}")
+    def predict(self, sentence: str):
+        sentence = self.processString(sentence)
+        print(sentence)
