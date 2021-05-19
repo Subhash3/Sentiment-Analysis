@@ -155,6 +155,10 @@ class TextClassifier:
 
         self.summaryByClass = self._describeByClass(self.dataset)
 
+    def computeProbabilities(self, tokens: list):
+        for token in tokens:
+            pass
+
     def predict(self, sentence: str):
         sentence = self.processString(sentence)
-        print(sentence)
+        # print(sentence)
