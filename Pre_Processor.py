@@ -1,7 +1,8 @@
 import re
 from helpers import stopWords
 
-class PreProcess :
+
+class PreProcess:
     def removeSpecialChars(self, sentence: str):
         """
             Removes special characters from a given string
@@ -88,6 +89,8 @@ class PreProcess :
         for sample in data:
             sentence = sample["sentence"]
             tokens = self.processString(sentence)
+            if len(tokens) == []:
+                continue
             processed.append({
                 "tokens": tokens,
                 "category": sample["category"]
