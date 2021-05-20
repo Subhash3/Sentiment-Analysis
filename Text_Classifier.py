@@ -47,8 +47,9 @@ class TextClassifier:
             data = json.load(open(jsonFile))
             data = self.preProcessor.preProcess(data)
 
-            train, test = splitArr(data, 2/3)
-            self.test = test
+            train, test = splitArr(data, 3/4)
+            self.testing = test
+            self.training = train
 
             data = shuffleArray(train)
             self.dataset = pd.DataFrame(data)
@@ -119,7 +120,7 @@ class TextClassifier:
         """
 
         if len(tokens) == 0:
-            return {}
+            return None
 
         categories = set(self.dataset["category"])
 
@@ -159,6 +160,8 @@ class TextClassifier:
         # print(self.summaryByClass)
         probabilities = self.computeProbabilities(tokens)
         # print(probabilities)
+        if probabilities == None:
+            return None
         return customArgmax(probabilities), probabilities
 
     def predictByTokens(self, tokens):
@@ -169,16 +172,18 @@ class TextClassifier:
     def Test(self):
         correct = 0
         total = 0
-        for i in range(len(self.test)):
-            sample = self.test[i]
+        for i in range(len(self.testing)):
+            sample = self.testing[i]
             try:
                 prediction = self.predictByTokens(sample["tokens"])
+                if prediction == None:
+                    continue
                 if prediction[0] == sample["category"]:
                     correct += 1
                 total += 1
             except Exception as e:
                 print(e)
                 print(sample)
-                quit()
+                # quit()
         print(correct*100/total)
-        print(correct, total, len(self.test))
+        print(correct, total, len(self.testing))
