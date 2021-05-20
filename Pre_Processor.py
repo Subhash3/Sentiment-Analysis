@@ -1,5 +1,6 @@
 import re
 from helpers import stopWords
+import pandas as pd
 
 
 class PreProcess:
@@ -70,7 +71,7 @@ class PreProcess:
 
         return tokens
 
-    def preProcess(self, data):
+    def preProcess(self, data: pd.DataFrame):
         """
             Applies several pre-processing steps such as tokenization, stemming ...etc to the data.
 
@@ -85,15 +86,16 @@ class PreProcess:
                 Preprocessed data
         """
 
-        processed = list()
-        for sample in data:
-            sentence = sample["sentence"]
-            tokens = self.processString(sentence)
-            if len(tokens) == []:
-                continue
-            processed.append({
-                "tokens": tokens,
-                "category": sample["category"]
-            })
+        processedSeries = list()
+        for sentence in data["sentence"]:
+            processedSentence = self.processString(sentence)
+            processedSeries.append(processedSentence)
 
-        return processed
+        # print(processedSeries)
+        # print(pd.Series(processedSeries))
+
+        # data["sentence"].update(pd.Series(processedSeries))
+        data["tokens"] = pd.Series(processedSeries)
+        # print(data)
+
+        return data

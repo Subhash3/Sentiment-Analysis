@@ -22,7 +22,7 @@ class TextClassifier:
         self.DEFAULT_PROBABILITY = 1
         self.preProcessor = PreProcess()
 
-    def loadDataset(self, jsonFile):
+    def loadDatasetJson(self, jsonFile):
         """
             Loads the data from a json file into a pandas DataFrame
 
@@ -47,12 +47,48 @@ class TextClassifier:
             data = json.load(open(jsonFile))
             data = self.preProcessor.preProcess(data)
 
-            train, test = splitArr(data, 3/4)
+            train, test = splitArr(data, 4/5)
             self.testing = test
             self.training = train
 
             data = shuffleArray(train)
             self.dataset = pd.DataFrame(data)
+            self.noOfSamples = self.dataset.shape[0]
+        except Exception as e:
+            raise e
+
+    def loadDatasetCsv(self, csvFile):
+        """
+            Loads the data from a json file into a pandas DataFrame
+
+            Parameters
+            ----------
+            jsonFile: str
+                Json file containing the dataset, an array of data-samples with the following structure:
+                {
+                    "sentence": "some sentence",
+                    "category": "positive/negative"
+                }
+
+            Returns
+            -------
+            None
+                if the dataset is loaded successfully.
+            Error: Exception
+                if error occurs.
+        """
+
+        try:
+            data = pd.read_csv(csvFile)
+            del data["ItemID"]
+            data.columns = ["category", "sentence"]
+            # print(data)
+            processedData = self.preProcessor.preProcess(data)
+            self.dataset = processedData
+
+            # data = shuffleArray(data)
+            # self.dataset = pd.DataFrame(data)
+            print(processedData)
             self.noOfSamples = self.dataset.shape[0]
         except Exception as e:
             raise e
@@ -85,7 +121,7 @@ class TextClassifier:
                 # print(tokenList)
                 for token in tokenList:
                     if token not in tokenProbabilities:
-                        tokenProbabilities[token] = self.DEFAULT_PROBABILITY
+                        tokenProbabilities[token] = 0
                     else:
                         tokenProbabilities[token] += 1
 
@@ -93,6 +129,12 @@ class TextClassifier:
                 tokenProbabilities[token] /= samplesCount
 
             summary[category] = tokenProbabilities
+
+        for category in categories:
+            s = summary[category]
+            for token in s:
+                s[token] += self.DEFAULT_PROBABILITY
+
             # print()
         # print(summary)
         return summary
@@ -135,11 +177,11 @@ class TextClassifier:
                 if token in self.summaryByClass[category]:
                     p = self.summaryByClass[category][token]
                 else:
-                    p = 0.001
+                    p = 1
                 # print(category, token, p, priorProbability)
                 likelihood *= p
             probabilities[category] = p * priorProbability
-            # print()
+            # print(probabilities[category])
         return probabilities
 
     def predict(self, sentence: str):
@@ -172,7 +214,10 @@ class TextClassifier:
     def Test(self):
         correct = 0
         total = 0
-        for i in range(len(self.testing)):
+        total = len(self.testing)
+        if total <= 0:
+            return
+        for i in range(total):
             sample = self.testing[i]
             try:
                 prediction = self.predictByTokens(sample["tokens"])
@@ -180,10 +225,9 @@ class TextClassifier:
                     continue
                 if prediction[0] == sample["category"]:
                     correct += 1
-                total += 1
             except Exception as e:
                 print(e)
                 print(sample)
                 # quit()
         print(correct*100/total)
-        print(correct, total, len(self.testing))
+        print(correct, total)
