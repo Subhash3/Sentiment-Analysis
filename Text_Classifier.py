@@ -1,8 +1,8 @@
 import pandas as pd
-import re
 import json
-from helpers import customArgmax, shuffleArray, splitArr
+from helpers import customArgmax, shuffleArray, splitDataframe, splitArr
 from Pre_Processor import PreProcess
+import sys
 
 
 class TextClassifier:
@@ -79,17 +79,16 @@ class TextClassifier:
         """
 
         try:
-            data = pd.read_csv(csvFile)
+            data = pd.read_csv(csvFile, encoding="ISO-8859-1")
             del data["ItemID"]
             data.columns = ["category", "sentence"]
-            # print(data)
+
             processedData = self.preProcessor.preProcess(data)
             self.dataset = processedData
 
-            # data = shuffleArray(data)
-            # self.dataset = pd.DataFrame(data)
-            print(processedData)
-            self.noOfSamples = self.dataset.shape[0]
+            self.training, self.testing = splitDataframe(self.dataset, 3/4)
+
+            self.noOfSamples = self.training.shape[0]
         except Exception as e:
             raise e
 
@@ -144,7 +143,8 @@ class TextClassifier:
             Computes the mean and std of each feature in each class and stores the results in self.summaryByClass
         """
 
-        self.summaryByClass = self._describeByClass(self.dataset)
+        self.summaryByClass = self._describeByClass(self.training)
+        print(f"Trained {self.training.shape[0]} samples")
 
     def computeProbabilities(self, tokens: list):
         """
@@ -164,11 +164,11 @@ class TextClassifier:
         if len(tokens) == 0:
             return None
 
-        categories = set(self.dataset["category"])
+        categories = set(self.training["category"])
 
         probabilities = dict()
         for category in categories:
-            samples = self.dataset[self.dataset["category"] == category]
+            samples = self.training[self.training["category"] == category]
             samplesCount = samples.shape[0]
             priorProbability = samplesCount/self.noOfSamples
 
@@ -214,20 +214,35 @@ class TextClassifier:
     def Test(self):
         correct = 0
         total = 0
-        total = len(self.testing)
+        total = self.testing.shape[0]
+
         if total <= 0:
             return
-        for i in range(total):
-            sample = self.testing[i]
-            try:
-                prediction = self.predictByTokens(sample["tokens"])
-                if prediction == None:
-                    continue
-                if prediction[0] == sample["category"]:
-                    correct += 1
-            except Exception as e:
-                print(e)
-                print(sample)
-                # quit()
-        print(correct*100/total)
-        print(correct, total)
+
+        testingProgress = 0
+
+        testedSamples = 0
+        nonEmptyTokens = 0
+        tokensColumn = self.testing["tokens"]
+        # print(self.testing.head(10))
+        # print(self.testing.index.values)
+        for i in self.testing.index.values:
+            testingProgress = (testedSamples*100)/total
+            print(
+                f"Testing {round(testingProgress, 3)}% done {'.-'*(int(testingProgress/5)+1)}", end='\r')
+            sys.stdout.flush()
+            tokens = tokensColumn[i]
+            # print(tokens)
+            if len(tokens) == 0:
+                continue
+
+            prediction = self.predictByTokens(tokens)
+            if prediction[0] == self.testing["category"][i]:
+                correct += 1
+            nonEmptyTokens += 1
+            testedSamples += 1
+        print()
+        print(f"Tested: {total} samples.")
+
+        # print(correct, total, nonEmptyTokens)
+        print(f"Accuracy: {max(correct*100/total,correct*100/nonEmptyTokens)}")
