@@ -3,6 +3,7 @@ import json
 from helpers import customArgmax, shuffleArray, splitDataframe, splitArr
 from Pre_Processor import PreProcess
 import sys
+from custom_exceptions import RequiredFieldsNotFoundError
 
 
 class TextClassifier:
@@ -80,8 +81,9 @@ class TextClassifier:
 
         try:
             data = pd.read_csv(csvFile, encoding="ISO-8859-1")
-            del data["ItemID"]
-            data.columns = ["category", "sentence"]
+
+            if ("sentence" not in data.columns) or ("category" not in data.columns):
+                raise RequiredFieldsNotFoundError
 
             processedData = self.preProcessor.preProcess(data)
             self.dataset = processedData
@@ -207,11 +209,33 @@ class TextClassifier:
         return customArgmax(probabilities), probabilities
 
     def predictByTokens(self, tokens):
+        """
+            Predicts the category of the given tokens of a sentence.
+
+            Attributes
+            ----------
+            tokens: List[str]
+
+            Returns
+            -------
+            Tuple[str, Dict[str, float]]
+                Tuple containing the predicted category and probabilities of all categories.
+        """
         probabilities = self.computeProbabilities(tokens)
         # print(probabilities)
         return customArgmax(probabilities), probabilities
 
     def Test(self):
+        """
+            Tests the model agaist the part of a dataset and compute the accuracy.
+
+            Attributes
+            ----------
+
+            Returns
+            -------
+            accuracy: float
+        """
         correct = 0
         total = 0
         total = self.testing.shape[0]
@@ -245,4 +269,6 @@ class TextClassifier:
         print(f"Tested: {total} samples.")
 
         # print(correct, total, nonEmptyTokens)
-        print(f"Accuracy: {max(correct*100/total,correct*100/nonEmptyTokens)}")
+        accuracy = max(correct*100/total, correct*100/nonEmptyTokens)
+        print(f"Accuracy: {accuracy}")
+        return accuracy
