@@ -31,6 +31,7 @@ pyFiles = getAllPyFiles()
 docsDir = "docs/"
 filesToDocument = pyFiles.difference(filesToIgnore)
 
+os.system(f"rm -rf {docsDir}")
 for filename in filesToDocument:
     # print(filename)
     os.system(f"pdoc --html {filename} --force -o {docsDir}")

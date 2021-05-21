@@ -28,8 +28,10 @@
 </summary>
 <pre><code class="python">import re
 from helpers import stopWords
+import pandas as pd
 
-class PreProcess :
+
+class PreProcess:
     def removeSpecialChars(self, sentence: str):
         &#34;&#34;&#34;
             Removes special characters from a given string
@@ -97,7 +99,7 @@ class PreProcess :
 
         return tokens
 
-    def preProcess(self, data):
+    def preProcess(self, data: pd.DataFrame):
         &#34;&#34;&#34;
             Applies several pre-processing steps such as tokenization, stemming ...etc to the data.
 
@@ -112,16 +114,19 @@ class PreProcess :
                 Preprocessed data
         &#34;&#34;&#34;
 
-        processed = list()
-        for sample in data:
-            sentence = sample[&#34;sentence&#34;]
-            tokens = self.processString(sentence)
-            processed.append({
-                &#34;tokens&#34;: tokens,
-                &#34;category&#34;: sample[&#34;category&#34;]
-            })
+        processedSeries = list()
+        for sentence in data[&#34;sentence&#34;]:
+            processedSentence = self.processString(sentence)
+            processedSeries.append(processedSentence)
 
-        return processed</code></pre>
+        # print(processedSeries)
+        # print(pd.Series(processedSeries))
+
+        # data[&#34;sentence&#34;].update(pd.Series(processedSeries))
+        data[&#34;tokens&#34;] = pd.Series(processedSeries)
+        # print(data)
+
+        return data</code></pre>
 </details>
 </section>
 <section>
@@ -142,7 +147,7 @@ class PreProcess :
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">class PreProcess :
+<pre><code class="python">class PreProcess:
     def removeSpecialChars(self, sentence: str):
         &#34;&#34;&#34;
             Removes special characters from a given string
@@ -210,7 +215,7 @@ class PreProcess :
 
         return tokens
 
-    def preProcess(self, data):
+    def preProcess(self, data: pd.DataFrame):
         &#34;&#34;&#34;
             Applies several pre-processing steps such as tokenization, stemming ...etc to the data.
 
@@ -225,21 +230,24 @@ class PreProcess :
                 Preprocessed data
         &#34;&#34;&#34;
 
-        processed = list()
-        for sample in data:
-            sentence = sample[&#34;sentence&#34;]
-            tokens = self.processString(sentence)
-            processed.append({
-                &#34;tokens&#34;: tokens,
-                &#34;category&#34;: sample[&#34;category&#34;]
-            })
+        processedSeries = list()
+        for sentence in data[&#34;sentence&#34;]:
+            processedSentence = self.processString(sentence)
+            processedSeries.append(processedSentence)
 
-        return processed</code></pre>
+        # print(processedSeries)
+        # print(pd.Series(processedSeries))
+
+        # data[&#34;sentence&#34;].update(pd.Series(processedSeries))
+        data[&#34;tokens&#34;] = pd.Series(processedSeries)
+        # print(data)
+
+        return data</code></pre>
 </details>
 <h3>Methods</h3>
 <dl>
 <dt id="Pre_Processor.PreProcess.preProcess"><code class="name flex">
-<span>def <span class="ident">preProcess</span></span>(<span>self, data)</span>
+<span>def <span class="ident">preProcess</span></span>(<span>self, data: pandas.core.frame.DataFrame)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Applies several pre-processing steps such as tokenization, stemming &hellip;etc to the data.</p>
@@ -257,7 +265,7 @@ class PreProcess :
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def preProcess(self, data):
+<pre><code class="python">def preProcess(self, data: pd.DataFrame):
     &#34;&#34;&#34;
         Applies several pre-processing steps such as tokenization, stemming ...etc to the data.
 
@@ -272,16 +280,19 @@ class PreProcess :
             Preprocessed data
     &#34;&#34;&#34;
 
-    processed = list()
-    for sample in data:
-        sentence = sample[&#34;sentence&#34;]
-        tokens = self.processString(sentence)
-        processed.append({
-            &#34;tokens&#34;: tokens,
-            &#34;category&#34;: sample[&#34;category&#34;]
-        })
+    processedSeries = list()
+    for sentence in data[&#34;sentence&#34;]:
+        processedSentence = self.processString(sentence)
+        processedSeries.append(processedSentence)
 
-    return processed</code></pre>
+    # print(processedSeries)
+    # print(pd.Series(processedSeries))
+
+    # data[&#34;sentence&#34;].update(pd.Series(processedSeries))
+    data[&#34;tokens&#34;] = pd.Series(processedSeries)
+    # print(data)
+
+    return data</code></pre>
 </details>
 </dd>
 <dt id="Pre_Processor.PreProcess.processString"><code class="name flex">

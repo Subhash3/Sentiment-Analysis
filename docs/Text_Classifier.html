@@ -27,10 +27,11 @@
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">import pandas as pd
-import re
 import json
-from helpers import customArgmax, shuffleArray, splitArr
+from helpers import customArgmax, shuffleArray, splitDataframe, splitArr
 from Pre_Processor import PreProcess
+import sys
+from custom_exceptions import RequiredFieldsNotFoundError
 
 
 class TextClassifier:
@@ -50,7 +51,7 @@ class TextClassifier:
         self.DEFAULT_PROBABILITY = 1
         self.preProcessor = PreProcess()
 
-    def loadDataset(self, jsonFile):
+    def loadDatasetJson(self, jsonFile):
         &#34;&#34;&#34;
             Loads the data from a json file into a pandas DataFrame
 
@@ -75,9 +76,49 @@ class TextClassifier:
             data = json.load(open(jsonFile))
             data = self.preProcessor.preProcess(data)
 
-            data = shuffleArray(data)
+            train, test = splitArr(data, 4/5)
+            self.testing = test
+            self.training = train
+
+            data = shuffleArray(train)
             self.dataset = pd.DataFrame(data)
             self.noOfSamples = self.dataset.shape[0]
+        except Exception as e:
+            raise e
+
+    def loadDatasetCsv(self, csvFile):
+        &#34;&#34;&#34;
+            Loads the data from a json file into a pandas DataFrame
+
+            Parameters
+            ----------
+            jsonFile: str
+                Json file containing the dataset, an array of data-samples with the following structure:
+                {
+                    &#34;sentence&#34;: &#34;some sentence&#34;,
+                    &#34;category&#34;: &#34;positive/negative&#34;
+                }
+
+            Returns
+            -------
+            None
+                if the dataset is loaded successfully.
+            Error: Exception
+                if error occurs.
+        &#34;&#34;&#34;
+
+        try:
+            data = pd.read_csv(csvFile, encoding=&#34;ISO-8859-1&#34;)
+
+            if (&#34;sentence&#34; not in data.columns) or (&#34;category&#34; not in data.columns):
+                raise RequiredFieldsNotFoundError
+
+            processedData = self.preProcessor.preProcess(data)
+            self.dataset = processedData
+
+            self.training, self.testing = splitDataframe(self.dataset, 3/4)
+
+            self.noOfSamples = self.training.shape[0]
         except Exception as e:
             raise e
 
@@ -109,7 +150,7 @@ class TextClassifier:
                 # print(tokenList)
                 for token in tokenList:
                     if token not in tokenProbabilities:
-                        tokenProbabilities[token] = self.DEFAULT_PROBABILITY
+                        tokenProbabilities[token] = 0
                     else:
                         tokenProbabilities[token] += 1
 
@@ -117,6 +158,12 @@ class TextClassifier:
                 tokenProbabilities[token] /= samplesCount
 
             summary[category] = tokenProbabilities
+
+        for category in categories:
+            s = summary[category]
+            for token in s:
+                s[token] += self.DEFAULT_PROBABILITY
+
             # print()
         # print(summary)
         return summary
@@ -126,7 +173,8 @@ class TextClassifier:
             Computes the mean and std of each feature in each class and stores the results in self.summaryByClass
         &#34;&#34;&#34;
 
-        self.summaryByClass = self._describeByClass(self.dataset)
+        self.summaryByClass = self._describeByClass(self.training)
+        print(f&#34;Trained {self.training.shape[0]} samples&#34;)
 
     def computeProbabilities(self, tokens: list):
         &#34;&#34;&#34;
@@ -143,11 +191,14 @@ class TextClassifier:
                 probability of each class/category.
         &#34;&#34;&#34;
 
-        categories = set(self.dataset[&#34;category&#34;])
+        if len(tokens) == 0:
+            return None
+
+        categories = set(self.training[&#34;category&#34;])
 
         probabilities = dict()
         for category in categories:
-            samples = self.dataset[self.dataset[&#34;category&#34;] == category]
+            samples = self.training[self.training[&#34;category&#34;] == category]
             samplesCount = samples.shape[0]
             priorProbability = samplesCount/self.noOfSamples
 
@@ -156,11 +207,11 @@ class TextClassifier:
                 if token in self.summaryByClass[category]:
                     p = self.summaryByClass[category][token]
                 else:
-                    p = 0.001
+                    p = 1
                 # print(category, token, p, priorProbability)
                 likelihood *= p
             probabilities[category] = p * priorProbability
-            # print()
+            # print(probabilities[category])
         return probabilities
 
     def predict(self, sentence: str):
@@ -181,7 +232,74 @@ class TextClassifier:
         # print(self.summaryByClass)
         probabilities = self.computeProbabilities(tokens)
         # print(probabilities)
-        return customArgmax(probabilities), probabilities</code></pre>
+        if probabilities == None:
+            return None
+        return customArgmax(probabilities), probabilities
+
+    def predictByTokens(self, tokens):
+        &#34;&#34;&#34;
+            Predicts the category of the given tokens of a sentence.
+
+            Attributes
+            ----------
+            tokens: List[str]
+
+            Returns
+            -------
+            Tuple[str, Dict[str, float]]
+                Tuple containing the predicted category and probabilities of all categories.
+        &#34;&#34;&#34;
+        probabilities = self.computeProbabilities(tokens)
+        # print(probabilities)
+        return customArgmax(probabilities), probabilities
+
+    def Test(self):
+        &#34;&#34;&#34;
+            Tests the model agaist the part of a dataset and compute the accuracy.
+
+            Attributes
+            ----------
+
+            Returns
+            -------
+            accuracy: float
+        &#34;&#34;&#34;
+        correct = 0
+        total = 0
+        total = self.testing.shape[0]
+
+        if total &lt;= 0:
+            return
+
+        testingProgress = 0
+
+        testedSamples = 0
+        nonEmptyTokens = 0
+        tokensColumn = self.testing[&#34;tokens&#34;]
+        # print(self.testing.head(10))
+        # print(self.testing.index.values)
+        for i in self.testing.index.values:
+            testingProgress = (testedSamples*100)/total
+            print(
+                f&#34;Testing {round(testingProgress, 3)}% done {&#39;.-&#39;*(int(testingProgress/5)+1)}&#34;, end=&#39;\r&#39;)
+            sys.stdout.flush()
+            tokens = tokensColumn[i]
+            # print(tokens)
+            if len(tokens) == 0:
+                continue
+
+            prediction = self.predictByTokens(tokens)
+            if prediction[0] == self.testing[&#34;category&#34;][i]:
+                correct += 1
+            nonEmptyTokens += 1
+            testedSamples += 1
+        print()
+        print(f&#34;Tested: {total} samples.&#34;)
+
+        # print(correct, total, nonEmptyTokens)
+        accuracy = max(correct*100/total, correct*100/nonEmptyTokens)
+        print(f&#34;Accuracy: {accuracy}&#34;)
+        return accuracy</code></pre>
 </details>
 </section>
 <section>
@@ -224,7 +342,7 @@ class TextClassifier:
         self.DEFAULT_PROBABILITY = 1
         self.preProcessor = PreProcess()
 
-    def loadDataset(self, jsonFile):
+    def loadDatasetJson(self, jsonFile):
         &#34;&#34;&#34;
             Loads the data from a json file into a pandas DataFrame
 
@@ -249,9 +367,49 @@ class TextClassifier:
             data = json.load(open(jsonFile))
             data = self.preProcessor.preProcess(data)
 
-            data = shuffleArray(data)
+            train, test = splitArr(data, 4/5)
+            self.testing = test
+            self.training = train
+
+            data = shuffleArray(train)
             self.dataset = pd.DataFrame(data)
             self.noOfSamples = self.dataset.shape[0]
+        except Exception as e:
+            raise e
+
+    def loadDatasetCsv(self, csvFile):
+        &#34;&#34;&#34;
+            Loads the data from a json file into a pandas DataFrame
+
+            Parameters
+            ----------
+            jsonFile: str
+                Json file containing the dataset, an array of data-samples with the following structure:
+                {
+                    &#34;sentence&#34;: &#34;some sentence&#34;,
+                    &#34;category&#34;: &#34;positive/negative&#34;
+                }
+
+            Returns
+            -------
+            None
+                if the dataset is loaded successfully.
+            Error: Exception
+                if error occurs.
+        &#34;&#34;&#34;
+
+        try:
+            data = pd.read_csv(csvFile, encoding=&#34;ISO-8859-1&#34;)
+
+            if (&#34;sentence&#34; not in data.columns) or (&#34;category&#34; not in data.columns):
+                raise RequiredFieldsNotFoundError
+
+            processedData = self.preProcessor.preProcess(data)
+            self.dataset = processedData
+
+            self.training, self.testing = splitDataframe(self.dataset, 3/4)
+
+            self.noOfSamples = self.training.shape[0]
         except Exception as e:
             raise e
 
@@ -283,7 +441,7 @@ class TextClassifier:
                 # print(tokenList)
                 for token in tokenList:
                     if token not in tokenProbabilities:
-                        tokenProbabilities[token] = self.DEFAULT_PROBABILITY
+                        tokenProbabilities[token] = 0
                     else:
                         tokenProbabilities[token] += 1
 
@@ -291,6 +449,12 @@ class TextClassifier:
                 tokenProbabilities[token] /= samplesCount
 
             summary[category] = tokenProbabilities
+
+        for category in categories:
+            s = summary[category]
+            for token in s:
+                s[token] += self.DEFAULT_PROBABILITY
+
             # print()
         # print(summary)
         return summary
@@ -300,7 +464,8 @@ class TextClassifier:
             Computes the mean and std of each feature in each class and stores the results in self.summaryByClass
         &#34;&#34;&#34;
 
-        self.summaryByClass = self._describeByClass(self.dataset)
+        self.summaryByClass = self._describeByClass(self.training)
+        print(f&#34;Trained {self.training.shape[0]} samples&#34;)
 
     def computeProbabilities(self, tokens: list):
         &#34;&#34;&#34;
@@ -317,11 +482,14 @@ class TextClassifier:
                 probability of each class/category.
         &#34;&#34;&#34;
 
-        categories = set(self.dataset[&#34;category&#34;])
+        if len(tokens) == 0:
+            return None
+
+        categories = set(self.training[&#34;category&#34;])
 
         probabilities = dict()
         for category in categories:
-            samples = self.dataset[self.dataset[&#34;category&#34;] == category]
+            samples = self.training[self.training[&#34;category&#34;] == category]
             samplesCount = samples.shape[0]
             priorProbability = samplesCount/self.noOfSamples
 
@@ -330,11 +498,11 @@ class TextClassifier:
                 if token in self.summaryByClass[category]:
                     p = self.summaryByClass[category][token]
                 else:
-                    p = 0.001
+                    p = 1
                 # print(category, token, p, priorProbability)
                 likelihood *= p
             probabilities[category] = p * priorProbability
-            # print()
+            # print(probabilities[category])
         return probabilities
 
     def predict(self, sentence: str):
@@ -355,10 +523,141 @@ class TextClassifier:
         # print(self.summaryByClass)
         probabilities = self.computeProbabilities(tokens)
         # print(probabilities)
-        return customArgmax(probabilities), probabilities</code></pre>
+        if probabilities == None:
+            return None
+        return customArgmax(probabilities), probabilities
+
+    def predictByTokens(self, tokens):
+        &#34;&#34;&#34;
+            Predicts the category of the given tokens of a sentence.
+
+            Attributes
+            ----------
+            tokens: List[str]
+
+            Returns
+            -------
+            Tuple[str, Dict[str, float]]
+                Tuple containing the predicted category and probabilities of all categories.
+        &#34;&#34;&#34;
+        probabilities = self.computeProbabilities(tokens)
+        # print(probabilities)
+        return customArgmax(probabilities), probabilities
+
+    def Test(self):
+        &#34;&#34;&#34;
+            Tests the model agaist the part of a dataset and compute the accuracy.
+
+            Attributes
+            ----------
+
+            Returns
+            -------
+            accuracy: float
+        &#34;&#34;&#34;
+        correct = 0
+        total = 0
+        total = self.testing.shape[0]
+
+        if total &lt;= 0:
+            return
+
+        testingProgress = 0
+
+        testedSamples = 0
+        nonEmptyTokens = 0
+        tokensColumn = self.testing[&#34;tokens&#34;]
+        # print(self.testing.head(10))
+        # print(self.testing.index.values)
+        for i in self.testing.index.values:
+            testingProgress = (testedSamples*100)/total
+            print(
+                f&#34;Testing {round(testingProgress, 3)}% done {&#39;.-&#39;*(int(testingProgress/5)+1)}&#34;, end=&#39;\r&#39;)
+            sys.stdout.flush()
+            tokens = tokensColumn[i]
+            # print(tokens)
+            if len(tokens) == 0:
+                continue
+
+            prediction = self.predictByTokens(tokens)
+            if prediction[0] == self.testing[&#34;category&#34;][i]:
+                correct += 1
+            nonEmptyTokens += 1
+            testedSamples += 1
+        print()
+        print(f&#34;Tested: {total} samples.&#34;)
+
+        # print(correct, total, nonEmptyTokens)
+        accuracy = max(correct*100/total, correct*100/nonEmptyTokens)
+        print(f&#34;Accuracy: {accuracy}&#34;)
+        return accuracy</code></pre>
 </details>
 <h3>Methods</h3>
 <dl>
+<dt id="Text_Classifier.TextClassifier.Test"><code class="name flex">
+<span>def <span class="ident">Test</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Tests the model agaist the part of a dataset and compute the accuracy.</p>
+<h2 id="attributes">Attributes</h2>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>accuracy</code></strong> :&ensp;<code>float</code></dt>
+<dd>&nbsp;</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def Test(self):
+    &#34;&#34;&#34;
+        Tests the model agaist the part of a dataset and compute the accuracy.
+
+        Attributes
+        ----------
+
+        Returns
+        -------
+        accuracy: float
+    &#34;&#34;&#34;
+    correct = 0
+    total = 0
+    total = self.testing.shape[0]
+
+    if total &lt;= 0:
+        return
+
+    testingProgress = 0
+
+    testedSamples = 0
+    nonEmptyTokens = 0
+    tokensColumn = self.testing[&#34;tokens&#34;]
+    # print(self.testing.head(10))
+    # print(self.testing.index.values)
+    for i in self.testing.index.values:
+        testingProgress = (testedSamples*100)/total
+        print(
+            f&#34;Testing {round(testingProgress, 3)}% done {&#39;.-&#39;*(int(testingProgress/5)+1)}&#34;, end=&#39;\r&#39;)
+        sys.stdout.flush()
+        tokens = tokensColumn[i]
+        # print(tokens)
+        if len(tokens) == 0:
+            continue
+
+        prediction = self.predictByTokens(tokens)
+        if prediction[0] == self.testing[&#34;category&#34;][i]:
+            correct += 1
+        nonEmptyTokens += 1
+        testedSamples += 1
+    print()
+    print(f&#34;Tested: {total} samples.&#34;)
+
+    # print(correct, total, nonEmptyTokens)
+    accuracy = max(correct*100/total, correct*100/nonEmptyTokens)
+    print(f&#34;Accuracy: {accuracy}&#34;)
+    return accuracy</code></pre>
+</details>
+</dd>
 <dt id="Text_Classifier.TextClassifier.computeProbabilities"><code class="name flex">
 <span>def <span class="ident">computeProbabilities</span></span>(<span>self, tokens: list)</span>
 </code></dt>
@@ -393,11 +692,14 @@ class TextClassifier:
             probability of each class/category.
     &#34;&#34;&#34;
 
-    categories = set(self.dataset[&#34;category&#34;])
+    if len(tokens) == 0:
+        return None
+
+    categories = set(self.training[&#34;category&#34;])
 
     probabilities = dict()
     for category in categories:
-        samples = self.dataset[self.dataset[&#34;category&#34;] == category]
+        samples = self.training[self.training[&#34;category&#34;] == category]
         samplesCount = samples.shape[0]
         priorProbability = samplesCount/self.noOfSamples
 
@@ -406,16 +708,16 @@ class TextClassifier:
             if token in self.summaryByClass[category]:
                 p = self.summaryByClass[category][token]
             else:
-                p = 0.001
+                p = 1
             # print(category, token, p, priorProbability)
             likelihood *= p
         probabilities[category] = p * priorProbability
-        # print()
+        # print(probabilities[category])
     return probabilities</code></pre>
 </details>
 </dd>
-<dt id="Text_Classifier.TextClassifier.loadDataset"><code class="name flex">
-<span>def <span class="ident">loadDataset</span></span>(<span>self, jsonFile)</span>
+<dt id="Text_Classifier.TextClassifier.loadDatasetCsv"><code class="name flex">
+<span>def <span class="ident">loadDatasetCsv</span></span>(<span>self, csvFile)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Loads the data from a json file into a pandas DataFrame</p>
@@ -439,7 +741,69 @@ class TextClassifier:
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def loadDataset(self, jsonFile):
+<pre><code class="python">def loadDatasetCsv(self, csvFile):
+    &#34;&#34;&#34;
+        Loads the data from a json file into a pandas DataFrame
+
+        Parameters
+        ----------
+        jsonFile: str
+            Json file containing the dataset, an array of data-samples with the following structure:
+            {
+                &#34;sentence&#34;: &#34;some sentence&#34;,
+                &#34;category&#34;: &#34;positive/negative&#34;
+            }
+
+        Returns
+        -------
+        None
+            if the dataset is loaded successfully.
+        Error: Exception
+            if error occurs.
+    &#34;&#34;&#34;
+
+    try:
+        data = pd.read_csv(csvFile, encoding=&#34;ISO-8859-1&#34;)
+
+        if (&#34;sentence&#34; not in data.columns) or (&#34;category&#34; not in data.columns):
+            raise RequiredFieldsNotFoundError
+
+        processedData = self.preProcessor.preProcess(data)
+        self.dataset = processedData
+
+        self.training, self.testing = splitDataframe(self.dataset, 3/4)
+
+        self.noOfSamples = self.training.shape[0]
+    except Exception as e:
+        raise e</code></pre>
+</details>
+</dd>
+<dt id="Text_Classifier.TextClassifier.loadDatasetJson"><code class="name flex">
+<span>def <span class="ident">loadDatasetJson</span></span>(<span>self, jsonFile)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Loads the data from a json file into a pandas DataFrame</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>jsonFile</code></strong> :&ensp;<code>str</code></dt>
+<dd>Json file containing the dataset, an array of data-samples with the following structure:
+{
+"sentence": "some sentence",
+"category": "positive/negative"
+}</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code>None</code></dt>
+<dd>if the dataset is loaded successfully.</dd>
+<dt><strong><code>Error</code></strong> :&ensp;<code>Exception</code></dt>
+<dd>if error occurs.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def loadDatasetJson(self, jsonFile):
     &#34;&#34;&#34;
         Loads the data from a json file into a pandas DataFrame
 
@@ -464,7 +828,11 @@ class TextClassifier:
         data = json.load(open(jsonFile))
         data = self.preProcessor.preProcess(data)
 
-        data = shuffleArray(data)
+        train, test = splitArr(data, 4/5)
+        self.testing = test
+        self.training = train
+
+        data = shuffleArray(train)
         self.dataset = pd.DataFrame(data)
         self.noOfSamples = self.dataset.shape[0]
     except Exception as e:
@@ -508,6 +876,45 @@ class TextClassifier:
     # print(self.summaryByClass)
     probabilities = self.computeProbabilities(tokens)
     # print(probabilities)
+    if probabilities == None:
+        return None
+    return customArgmax(probabilities), probabilities</code></pre>
+</details>
+</dd>
+<dt id="Text_Classifier.TextClassifier.predictByTokens"><code class="name flex">
+<span>def <span class="ident">predictByTokens</span></span>(<span>self, tokens)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Predicts the category of the given tokens of a sentence.</p>
+<h2 id="attributes">Attributes</h2>
+<dl>
+<dt><strong><code>tokens</code></strong> :&ensp;<code>List[str]</code></dt>
+<dd>&nbsp;</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code>Tuple[str, Dict[str, float]]</code></dt>
+<dd>Tuple containing the predicted category and probabilities of all categories.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def predictByTokens(self, tokens):
+    &#34;&#34;&#34;
+        Predicts the category of the given tokens of a sentence.
+
+        Attributes
+        ----------
+        tokens: List[str]
+
+        Returns
+        -------
+        Tuple[str, Dict[str, float]]
+            Tuple containing the predicted category and probabilities of all categories.
+    &#34;&#34;&#34;
+    probabilities = self.computeProbabilities(tokens)
+    # print(probabilities)
     return customArgmax(probabilities), probabilities</code></pre>
 </details>
 </dd>
@@ -525,7 +932,8 @@ class TextClassifier:
         Computes the mean and std of each feature in each class and stores the results in self.summaryByClass
     &#34;&#34;&#34;
 
-    self.summaryByClass = self._describeByClass(self.dataset)</code></pre>
+    self.summaryByClass = self._describeByClass(self.training)
+    print(f&#34;Trained {self.training.shape[0]} samples&#34;)</code></pre>
 </details>
 </dd>
 </dl>
@@ -544,9 +952,12 @@ class TextClassifier:
 <li>
 <h4><code><a title="Text_Classifier.TextClassifier" href="#Text_Classifier.TextClassifier">TextClassifier</a></code></h4>
 <ul class="">
+<li><code><a title="Text_Classifier.TextClassifier.Test" href="#Text_Classifier.TextClassifier.Test">Test</a></code></li>
 <li><code><a title="Text_Classifier.TextClassifier.computeProbabilities" href="#Text_Classifier.TextClassifier.computeProbabilities">computeProbabilities</a></code></li>
-<li><code><a title="Text_Classifier.TextClassifier.loadDataset" href="#Text_Classifier.TextClassifier.loadDataset">loadDataset</a></code></li>
+<li><code><a title="Text_Classifier.TextClassifier.loadDatasetCsv" href="#Text_Classifier.TextClassifier.loadDatasetCsv">loadDatasetCsv</a></code></li>
+<li><code><a title="Text_Classifier.TextClassifier.loadDatasetJson" href="#Text_Classifier.TextClassifier.loadDatasetJson">loadDatasetJson</a></code></li>
 <li><code><a title="Text_Classifier.TextClassifier.predict" href="#Text_Classifier.TextClassifier.predict">predict</a></code></li>
+<li><code><a title="Text_Classifier.TextClassifier.predictByTokens" href="#Text_Classifier.TextClassifier.predictByTokens">predictByTokens</a></code></li>
 <li><code><a title="Text_Classifier.TextClassifier.train" href="#Text_Classifier.TextClassifier.train">train</a></code></li>
 </ul>
 </li>
