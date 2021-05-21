@@ -3,7 +3,7 @@
     * I'm just trying to learn sentiment analysis using Naive Bayes Classifier.
 > Check out my Naive Bayes Classifier Repo [here](https://github.com/Subhash3/Naive-Bayes-Classifier-Py)  
 <!-- > Download dataset from [here](https://www.kaggle.com/c/sentiment-analysis-on-movie-reviews/data)   -->
-> Download the datset from [here](https://www.kaggle.com/columbine/imdb-dataset-sentiment-analysis-in-csv-format?select=Train.csv)  
+> Download the datset from [here](https://raw.githubusercontent.com/anoopbhatn/Sentiment-Analysis-using-Naive-Bayes-Classifier/master/Datasets/dataset.csv)  
 > I found the list of stop words in english [here](https://gist.github.com/sebleier/554280)
 
 
