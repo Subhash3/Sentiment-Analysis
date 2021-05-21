@@ -3,7 +3,7 @@
 from Text_Classifier import TextClassifier
 
 tc = TextClassifier()
-tc.loadDatasetCsv('./datasets/Gunjan933-github/train_short.csv')
+tc.loadDatasetCsv('./datasets/Gunjan933-github/train.csv')
 tc.train()
 # for category in tc.summaryByClass:
 #     for word in tc.summaryByClass[category]:
