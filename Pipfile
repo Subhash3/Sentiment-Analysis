@@ -4,7 +4,7 @@ verify_ssl = true
 name = "pypi"
 
 [scripts]
-docs = "pdoc . --html -o docs/ --force"
+docs = "./generate_docs.py"
 usage = "./usage.py"
 
 [packages]
